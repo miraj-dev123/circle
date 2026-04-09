@@ -2,11 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Advanced Flappy Bird</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Multi-Device Flappy Bird</title>
     <style>
-        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Arial', sans-serif; overflow: hidden; }
-        canvas { background: #70c5ce; border: 4px solid #fff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #ui { position: absolute; text-align: center; color: white; text-shadow: 2px 2px #000; pointer-events: none; }
+        body { 
+            margin: 0; 
+            background: #222; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            font-family: sans-serif; 
+            overflow: hidden; 
+            touch-action: manipulation; /* Prevents zooming on fast taps */
+        }
+        canvas { 
+            background: #70c5ce; 
+            max-width: 100%; 
+            max-height: 100vh; 
+            display: block;
+        }
+        #ui { 
+            position: absolute; 
+            text-align: center; 
+            color: white; 
+            text-shadow: 2px 2px #000; 
+            pointer-events: none; 
+            user-select: none;
+        }
         .hidden { display: none; }
     </style>
 </head>
@@ -14,8 +37,8 @@
 
     <div id="ui">
         <h1 id="msg">FLAPPY BIRD</h1>
-        <p id="submsg">Press SPACE or Joystick Button to Start</p>
-        <h2 id="scoreDisp" class="hidden">Score: 0</h2>
+        <p id="submsg">Tap Screen or Press Space</p>
+        <h2 id="scoreDisp" class="hidden">0</h2>
     </div>
 
     <canvas id="gameCanvas" width="360" height="580"></canvas>
@@ -27,23 +50,23 @@
     const submsg = document.getElementById("submsg");
     const scoreDisp = document.getElementById("scoreDisp");
 
-    // Game Constants
+    // Physics
     const gravity = 0.25;
-    const flapSpeed = -5;
+    const flapSpeed = -5.5;
     const pipeWidth = 60;
-    const pipeGap = 160;
-    const pipeSpeed = 2.5;
+    const pipeGap = 150;
+    let pipeSpeed = 2.5;
 
-    // Game State
-    let bird = { x: 50, y: 250, w: 30, h: 24, velocity: 0 };
+    // State
+    let bird = { x: 50, y: 250, w: 30, h: 25, vel: 0 };
     let pipes = [];
     let score = 0;
     let frame = 0;
-    let gameState = "START"; // START, PLAYING, GAMEOVER
+    let gameState = "START"; 
 
     function resetGame() {
         bird.y = 250;
-        bird.velocity = 0;
+        bird.vel = 0;
         pipes = [];
         score = 0;
         frame = 0;
@@ -51,70 +74,66 @@
         msg.classList.add("hidden");
         submsg.classList.add("hidden");
         scoreDisp.classList.remove("hidden");
+        scoreDisp.innerText = "0";
     }
 
     function flap() {
         if (gameState === "START" || gameState === "GAMEOVER") {
             resetGame();
         } else {
-            bird.velocity = flapSpeed;
+            bird.vel = flapSpeed;
         }
     }
 
-    // Input Listeners
+    // --- MULTI-DEVICE INPUTS ---
+    // 1. Laptop: Keyboard
     window.addEventListener("keydown", (e) => { if (e.code === "Space") flap(); });
-    window.addEventListener("mousedown", flap);
+    // 2. Mobile/Laptop: Touch/Click
+    window.addEventListener("touchstart", (e) => { e.preventDefault(); flap(); }, {passive: false});
+    window.addEventListener("mousedown", (e) => { if(e.button === 0) flap(); });
 
     function update() {
         if (gameState === "PLAYING") {
-            // 1. Bird Physics
-            bird.velocity += gravity;
-            bird.y += bird.velocity;
+            bird.vel += gravity;
+            bird.y += bird.vel;
 
-            // 2. Boundary Collision (Out if touches top or bottom)
-            if (bird.y < 0 || bird.y + bird.h > canvas.height) {
-                endGame();
-            }
+            // Boundary Check
+            if (bird.y < 0 || bird.y + bird.h > canvas.height) endGame();
 
-            // 3. Pipe Logic
-            if (frame % 90 === 0) {
+            // Pipe Spawn
+            if (frame % 100 === 0) {
                 let pipeY = Math.random() * (canvas.height - pipeGap - 100) + 50;
-                pipes.push({ x: canvas.width, topH: pipeY });
+                pipes.push({ x: canvas.width, topH: pipeY, passed: false });
             }
 
-            pipes.forEach((p, i) => {
+            pipes.forEach(p => {
                 p.x -= pipeSpeed;
-
-                // Pipe Collision
+                // Collision
                 if (bird.x < p.x + pipeWidth && bird.x + bird.w > p.x &&
                    (bird.y < p.topH || bird.y + bird.h > p.topH + pipeGap)) {
                     endGame();
                 }
-
-                // Scoring
+                // Score
                 if (p.x + pipeWidth < bird.x && !p.passed) {
                     score++;
                     p.passed = true;
-                    scoreDisp.innerText = `Score: ${score}`;
+                    scoreDisp.innerText = score;
                 }
             });
 
-            // Remove off-screen pipes
             pipes = pipes.filter(p => p.x > -pipeWidth);
             frame++;
         }
 
-        // 4. Joystick Check
-        const gamepads = navigator.getGamepads();
-        if (gamepads[0]) {
-            if (gamepads[0].buttons.some(b => b.pressed)) flap();
-        }
+        // 3. Joystick Support
+        const gp = navigator.getGamepads()[0];
+        if (gp && gp.buttons.some(b => b.pressed)) flap();
     }
 
     function endGame() {
         gameState = "GAMEOVER";
         msg.innerText = "GAME OVER";
-        submsg.innerText = "Press Start to Replay";
+        submsg.innerText = "Tap to Replay";
         msg.classList.remove("hidden");
         submsg.classList.remove("hidden");
     }
@@ -125,8 +144,8 @@
         // Draw Pipes
         ctx.fillStyle = "#2ecc71";
         pipes.forEach(p => {
-            ctx.fillRect(p.x, 0, pipeWidth, p.topH); // Top
-            ctx.fillRect(p.x, p.topH + pipeGap, pipeWidth, canvas.height); // Bottom
+            ctx.fillRect(p.x, 0, pipeWidth, p.topH); 
+            ctx.fillRect(p.x, p.topH + pipeGap, pipeWidth, canvas.height); 
         });
 
         // Draw Bird
@@ -137,7 +156,7 @@
         requestAnimationFrame(draw);
     }
 
-    draw(); // Start the loop
+    draw();
 </script>
 </body>
 </html>
