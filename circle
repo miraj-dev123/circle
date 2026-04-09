@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Circle with Canvas</title>
+</head>
+<body>
+  <canvas id="canvas" width="400" height="400" style="border:1px solid #000000;"></canvas>
+  <script>
+    (function() {
+      var canvas = document.getElementById('canvas');
+      var ctx = canvas.getContext('2d');
+      // Center of the canvas
+      var cx = canvas.width / 2;
+      var cy = canvas.height / 2;
+      var r = 100; // radius
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2, false);
+      ctx.stroke();
+    })();
+  </script>
+</body>
+</html>
