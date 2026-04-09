@@ -1,23 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Circle with Canvas</title>
+  <meta charset="utf-8" />
+  <title>Joystick Circle Move</title>
+  <style>
+    body {
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    canvas {
+      background: white;
+    }
+  </style>
 </head>
 <body>
-  <canvas id="canvas" width="400" height="400" style="border:1px solid #000000;"></canvas>
+  <canvas id="c" width="600" height="400"></canvas>
   <script>
-    (function() {
-      var canvas = document.getElementById('canvas');
-      var ctx = canvas.getContext('2d');
-      // Center of the canvas
-      var cx = canvas.width / 2;
-      var cy = canvas.height / 2;
-      var r = 100; // radius
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    // Circle state
+    let x = canvas.width / 2;
+    let y = canvas.height / 2;
+    const radius = 20;
+
+    // Initial draw
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'blue';
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2, false);
-      ctx.stroke();
-    })();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    draw();
+
+    // Movement in steps of 20
+    const step = 20;
+    function move(dx, dy) {
+      x += dx;
+      y += dy;
+
+      // Keep circle within canvas bounds
+      if (x < radius) x = radius;
+      if (x > canvas.width - radius) x = canvas.width - radius;
+      if (y < radius) y = radius;
+      if (y > canvas.height - radius) y = canvas.height - radius;
+
+      draw();
+    }
+
+    // Keyboard bindings (Arrow keys)
+    window.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          move(0, -step);
+          break;
+        case 'ArrowDown':
+          move(0, step);
+          break;
+        case 'ArrowLeft':
+          move(-step, 0);
+          break;
+        case 'ArrowRight':
+          move(step, 0);
+          break;
+      }
+    });
   </script>
 </body>
 </html>
