@@ -1,82 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Flappy Bird JS</title>
+    <meta charset="UTF-8">
+    <title>Advanced Flappy Bird</title>
     <style>
-        canvas { background: #70c5ce; display: block; margin: 0 auto; border: 2px solid #000; }
+        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Arial', sans-serif; overflow: hidden; }
+        canvas { background: #70c5ce; border: 4px solid #fff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #ui { position: absolute; text-align: center; color: white; text-shadow: 2px 2px #000; pointer-events: none; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="320" height="480"></canvas>
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
 
-        // Game Variables
-        let birdY = 150, birdV = 0, gravity = 0.25;
-        let pipes = [];
-        let score = 0;
-        let frame = 0;
+    <div id="ui">
+        <h1 id="msg">FLAPPY BIRD</h1>
+        <p id="submsg">Press SPACE or Joystick Button to Start</p>
+        <h2 id="scoreDisp" class="hidden">Score: 0</h2>
+    </div>
 
-        function jump() { birdV = -5; }
+    <canvas id="gameCanvas" width="360" height="580"></canvas>
 
-        // Input: Keyboard (Space)
-        window.addEventListener("keydown", (e) => { if(e.code === "Space") jump(); });
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const msg = document.getElementById("msg");
+    const submsg = document.getElementById("submsg");
+    const scoreDisp = document.getElementById("scoreDisp");
 
-        // Input: Joystick Support
-        function checkJoystick() {
-            const gamepads = navigator.getGamepads();
-            if (gamepads[0]) {
-                // Jump if any button is pressed
-                if (gamepads[0].buttons.some(b => b.pressed)) jump();
-            }
+    // Game Constants
+    const gravity = 0.25;
+    const flapSpeed = -5;
+    const pipeWidth = 60;
+    const pipeGap = 160;
+    const pipeSpeed = 2.5;
+
+    // Game State
+    let bird = { x: 50, y: 250, w: 30, h: 24, velocity: 0 };
+    let pipes = [];
+    let score = 0;
+    let frame = 0;
+    let gameState = "START"; // START, PLAYING, GAMEOVER
+
+    function resetGame() {
+        bird.y = 250;
+        bird.velocity = 0;
+        pipes = [];
+        score = 0;
+        frame = 0;
+        gameState = "PLAYING";
+        msg.classList.add("hidden");
+        submsg.classList.add("hidden");
+        scoreDisp.classList.remove("hidden");
+    }
+
+    function flap() {
+        if (gameState === "START" || gameState === "GAMEOVER") {
+            resetGame();
+        } else {
+            bird.velocity = flapSpeed;
         }
+    }
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            checkJoystick();
+    // Input Listeners
+    window.addEventListener("keydown", (e) => { if (e.code === "Space") flap(); });
+    window.addEventListener("mousedown", flap);
 
-            // Bird Physics
-            birdV += gravity;
-            birdY += birdV;
+    function update() {
+        if (gameState === "PLAYING") {
+            // 1. Bird Physics
+            bird.velocity += gravity;
+            bird.y += bird.velocity;
 
-            // Draw Bird
-            ctx.fillStyle = "yellow";
-            ctx.fillRect(50, birdY, 20, 20);
+            // 2. Boundary Collision (Out if touches top or bottom)
+            if (bird.y < 0 || bird.y + bird.h > canvas.height) {
+                endGame();
+            }
 
-            // Handle Pipes
-            if (frame % 100 === 0) {
-                let gapTop = Math.random() * (canvas.height - 150) + 50;
-                pipes.push({ x: canvas.width, top: gapTop });
+            // 3. Pipe Logic
+            if (frame % 90 === 0) {
+                let pipeY = Math.random() * (canvas.height - pipeGap - 100) + 50;
+                pipes.push({ x: canvas.width, topH: pipeY });
             }
 
             pipes.forEach((p, i) => {
-                p.x -= 2;
-                ctx.fillStyle = "green";
-                // Top Pipe
-                ctx.fillRect(p.x, 0, 50, p.x < -50 ? 0 : p.top);
-                // Bottom Pipe (100px gap)
-                ctx.fillRect(p.x, p.top + 100, 50, canvas.height);
+                p.x -= pipeSpeed;
 
-                // Collision & Scoring
-                if (p.x === 50) score++;
-                if (birdY < 0 || birdY > canvas.height || (p.x < 70 && p.x > 30 && (birdY < p.top || birdY + 20 > p.top + 100))) {
-                    location.reload(); // Game Over - Restart
+                // Pipe Collision
+                if (bird.x < p.x + pipeWidth && bird.x + bird.w > p.x &&
+                   (bird.y < p.topH || bird.y + bird.h > p.topH + pipeGap)) {
+                    endGame();
+                }
+
+                // Scoring
+                if (p.x + pipeWidth < bird.x && !p.passed) {
+                    score++;
+                    p.passed = true;
+                    scoreDisp.innerText = `Score: ${score}`;
                 }
             });
 
-            pipes = pipes.filter(p => p.x > -50);
-
-            // Draw Score
-            ctx.fillStyle = "black";
-            ctx.font = "20px Arial";
-            ctx.fillText(`Score: ${score}`, 10, 25);
-
+            // Remove off-screen pipes
+            pipes = pipes.filter(p => p.x > -pipeWidth);
             frame++;
-            requestAnimationFrame(gameLoop);
         }
 
-        gameLoop();
-    </script>
+        // 4. Joystick Check
+        const gamepads = navigator.getGamepads();
+        if (gamepads[0]) {
+            if (gamepads[0].buttons.some(b => b.pressed)) flap();
+        }
+    }
+
+    function endGame() {
+        gameState = "GAMEOVER";
+        msg.innerText = "GAME OVER";
+        submsg.innerText = "Press Start to Replay";
+        msg.classList.remove("hidden");
+        submsg.classList.remove("hidden");
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Pipes
+        ctx.fillStyle = "#2ecc71";
+        pipes.forEach(p => {
+            ctx.fillRect(p.x, 0, pipeWidth, p.topH); // Top
+            ctx.fillRect(p.x, p.topH + pipeGap, pipeWidth, canvas.height); // Bottom
+        });
+
+        // Draw Bird
+        ctx.fillStyle = "#f1c40f";
+        ctx.fillRect(bird.x, bird.y, bird.w, bird.h);
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    draw(); // Start the loop
+</script>
 </body>
 </html>
